@@ -1,0 +1,122 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  username      String?        @unique
+  password      String?
+  name          String
+  role          String         @default("USER") // "USER" | "ADMIN"
+  picture       String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  contributions Contribution[]
+  contents      Content[]
+  favorites     Favorite[]
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  contents    Content[]
+  createdAt   DateTime  @default(now())
+}
+
+model Content {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  type         String         // "sejarah" | "budaya" | "artefak" | "tokoh" | "tempat" | "artikel"
+  title        String
+  subtitle     String?
+  period       String?
+  location     String?
+  region       String?        // Kabupaten / Kota di Lampung
+  coordinates  String?        // "lat, lng" e.g. "-5.4292, 105.2611"
+  description  String
+  content      String
+  image        String?
+  images       String?        // JSON stringified array of images
+  references   String?        // Citations / Apparatus criticus JSON
+  verifiedBy   String?        @default("Dewan Kurator JEJAK")
+  status       String         @default("PUBLISHED") // "DRAFT" | "PUBLISHED" | "ARCHIVED"
+  
+  categoryId   String?
+  category     Category?      @relation(fields: [categoryId], references: [id])
+  
+  authorId     String?
+  author       User?          @relation(fields: [authorId], references: [id])
+
+  contribution Contribution?
+  timeline     TimelineEvent?
+  favorites    Favorite[]
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Contribution {
+  id                 String    @id @default(uuid())
+  title              String
+  category           String
+  region             String
+  period             String?
+  location           String?
+  content            String
+  interviewee        String?
+  sourceRef          String?
+  attachment         String?
+  status             String    @default("SUBMITTED") // "DRAFT" | "SUBMITTED" | "UNDER_REVIEW" | "REVISION" | "APPROVED" | "REJECTED"
+  adminNotes         String?
+  rejectionReason    String?
+  urgencyScore       Int       @default(80)
+
+  userId             String?
+  user               User?     @relation(fields: [userId], references: [id])
+
+  publishedContentId String?   @unique
+  publishedContent   Content?  @relation(fields: [publishedContentId], references: [id])
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  year        String
+  epoch       String
+  title       String
+  subtitle    String?
+  location    String?
+  category    String?
+  summary     String
+  details     String?
+  keyFigure   String?
+  image       String?
+  order       Int      @default(0)
+
+  contentId   String?  @unique
+  content     Content? @relation(fields: [contentId], references: [id])
+
+  createdAt   DateTime @default(now())
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contentId String
+  content   Content  @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contentId])
+}
